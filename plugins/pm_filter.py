@@ -537,24 +537,39 @@ try:
                 logger.exception(f"Error checking subscription for channel {ch}: {e}")
 
     if not_joined:
-        # User hasn't joined all required channels
-        if clicked == typed:
-            invite_buttons.append([
-                InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"checksub#{ident}_{file_id}")
-            ])
-            await query.message.reply(
-                "**Please join all required channels to access this file.**",
-                reply_markup=InlineKeyboardMarkup(invite_buttons),
-                quote=True
-            )
-        else:
-            await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
-        return
+    # User hasn't joined all required channels
+    if clicked == typed:
+        invite_buttons.append([
+            InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"checksub#{ident}_{file_id}")
+        ])
+        await query.message.reply(
+            "**Please join all required channels to access this file.**",
+            reply_markup=InlineKeyboardMarkup(invite_buttons),
+            quote=True
+        )
+    else:
+        await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
+    return
 
 # If botpm is enabled, send redirect link
-elif settings['botpm']:
+if settings['botpm']:
     if clicked == typed:
         await query.answer(url=f"https://t.me/{temp.U_NAME}?start={ident}_{file_id}")
+    else:
+        await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
+
+# Otherwise send media directly
+else:
+    if clicked == typed:
+        await client.send_cached_media(
+            chat_id=query.from_user.id,
+            file_id=file_id,
+            caption=f_caption,
+            protect_content=True if ident == "filep" else False,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('⚓️ Grand Cinemas ⚓️', url="https://t.me/grandcinemas")]
+            ])
+        )
     else:
         await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
 
