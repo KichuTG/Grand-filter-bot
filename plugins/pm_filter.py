@@ -520,36 +520,36 @@ async def cb_handler(client: Client, query: CallbackQuery):
         if f_caption is None:
             f_caption = f"{files.file_name}"
 
-        try:    
-           if AUTH_CHANNELS:
-    for ch in AUTH_CHANNELS:
-        try:
-            if not await is_subscribed(client, query, int(ch)):
-                not_joined.append(ch)
-                try:
-                    invite_link = await client.create_chat_invite_link(int(ch))
-                    invite_buttons.append([
-                        InlineKeyboardButton("🤖 Join Updates Channel 🤖", url=invite_link.invite_link)
-                    ])
-                except ChatAdminRequired:
-                    logger.error(f"Bot must be admin in channel {ch}")
-        except Exception as e:
-            logger.exception(f"Error checking subscription for channel {ch}: {e}")
+try:    
+    if AUTH_CHANNELS:
+        for ch in AUTH_CHANNELS:
+            try:
+                if not await is_subscribed(client, query, int(ch)):
+                    not_joined.append(ch)
+                    try:
+                        invite_link = await client.create_chat_invite_link(int(ch))
+                        invite_buttons.append([
+                            InlineKeyboardButton("🤖 Join Updates Channel 🤖", url=invite_link.invite_link)
+                        ])
+                    except ChatAdminRequired:
+                        logger.error(f"Bot must be admin in channel {ch}")
+            except Exception as e:
+                logger.exception(f"Error checking subscription for channel {ch}: {e}")
 
-if not_joined:
-    # User hasn't joined all required channels
-    if clicked == typed:
-        invite_buttons.append([
-            InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"checksub#{ident}_{file_id}")
-        ])
-        await query.message.reply(
-            "**Please join all required channels to access this file.**",
-            reply_markup=InlineKeyboardMarkup(invite_buttons),
-            quote=True
-        )
-    else:
-        await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
-    return
+    if not_joined:
+        # User hasn't joined all required channels
+        if clicked == typed:
+            invite_buttons.append([
+                InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"checksub#{ident}_{file_id}")
+            ])
+            await query.message.reply(
+                "**Please join all required channels to access this file.**",
+                reply_markup=InlineKeyboardMarkup(invite_buttons),
+                quote=True
+            )
+        else:
+            await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
+        return
 
 # If botpm is enabled, send redirect link
 elif settings['botpm']:
