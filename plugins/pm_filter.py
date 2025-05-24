@@ -35,6 +35,8 @@ logger.setLevel(logging.ERROR)
 
 BUTTONS = {}
 SPELL_CHECK = {}
+not_joined = []
+invite_buttons = []
 
 
 @Client.on_message(filters.group & filters.text & filters.incoming)
@@ -518,27 +520,56 @@ async def cb_handler(client: Client, query: CallbackQuery):
         if f_caption is None:
             f_caption = f"{files.file_name}"
 
+        try:    
+           if AUTH_CHANNELS:
+    for ch in AUTH_CHANNELS:
         try:
-            if AUTH_CHANNEL and not await is_subscribed(client, query):
-                if clicked == typed:
-                    await query.answer(url=f"https://t.me/{temp.U_NAME}?start={ident}_{file_id}")
-                    return
-                else:
-                    await query.answer(f"𝖧𝖾𝗒 {query.from_user.first_name}, 𝖳𝗁𝗂𝗌 𝗂𝗌 𝗇𝗈𝗍 𝗒𝗈𝗎𝗋 𝗋𝖾𝗊𝗎𝖾𝗌𝗍 !", show_alert=True)
-            elif settings['botpm']:
-                if clicked == typed:
-                    await query.answer(url=f"https://t.me/{temp.U_NAME}?start={ident}_{file_id}")
-                    return
-                else:
-                    await query.answer(f"𝖧𝖾𝗒 {query.from_user.first_name}, 𝖳𝗁𝗂𝗌 𝗂𝗌 𝗇𝗈𝗍 𝗒𝗈𝗎𝗋 𝗋𝖾𝗊𝗎𝖾𝗌𝗍 !", show_alert=True)
-            else:
-                if clicked == typed:
-                    await client.send_cached_media(
-                        chat_id=query.from_user.id,
-                        file_id=file_id,
-                        caption=f_caption,
-                        protect_content=True if ident == "filep" else False,
-                        reply_markup=InlineKeyboardMarkup( [ [ InlineKeyboardButton('⚓️ 𝖦𝗋𝖺𝗇𝖽 ������� ⚓️', url="https://t.me/grandcinemas") ] ] ))
+            if not await is_subscribed(client, query, int(ch)):
+                not_joined.append(ch)
+                try:
+                    invite_link = await client.create_chat_invite_link(int(ch))
+                    invite_buttons.append([
+                        InlineKeyboardButton("🤖 Join Updates Channel 🤖", url=invite_link.invite_link)
+                    ])
+                except ChatAdminRequired:
+                    logger.error(f"Bot must be admin in channel {ch}")
+        except Exception as e:
+            logger.exception(f"Error checking subscription for channel {ch}: {e}")
+
+if not_joined:
+    # User hasn't joined all required channels
+    if clicked == typed:
+        invite_buttons.append([
+            InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"checksub#{ident}_{file_id}")
+        ])
+        await query.message.reply(
+            "**Please join all required channels to access this file.**",
+            reply_markup=InlineKeyboardMarkup(invite_buttons),
+            quote=True
+        )
+    else:
+        await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
+    return
+
+# If botpm is enabled, send redirect link
+elif settings['botpm']:
+    if clicked == typed:
+        await query.answer(url=f"https://t.me/{temp.U_NAME}?start={ident}_{file_id}")
+    else:
+        await query.answer(f"Hey {query.from_user.first_name}, this is not your request!", show_alert=True)
+
+# Otherwise send media directly
+else:
+    if clicked == typed:
+        await client.send_cached_media(
+            chat_id=query.from_user.id,
+            file_id=file_id,
+            caption=f_caption,
+            protect_content=True if ident == "filep" else False,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton('⚓️ Grand Cinemas ⚓️', url="https://t.me/grandcinemas")]
+            ])
+)
                 else:
                     await query.answer(f"𝖧𝖾𝗒 {query.from_user.first_name}, 𝖳𝗁𝗂𝗌 𝗂𝗌 𝗇𝗈𝗍 𝗒𝗈𝗎𝗋 𝗋𝖾𝗊𝗎𝖾𝗌𝗍 !", show_alert=True)
                 await query.answer('𝖢𝗁𝖾𝖼𝗄 𝖯𝖬, 𝖨 𝗁𝖺𝗏𝖾 𝗌𝖾𝗇𝗍 𝖿𝗂𝗅𝖾𝗌 𝗂𝗇 𝖯𝖬', show_alert=True)
