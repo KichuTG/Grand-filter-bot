@@ -42,15 +42,16 @@ class temp(object):
     SETTINGS = {}
     FILES_IDS = {}
 
-async def is_subscribed(bot, query):
+async def is_subscribed(bot, query, channel_id):
     try:
-        user = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
+        user = await bot.get_chat_member(channel_id, query.from_user.id)
     except UserNotParticipant:
-        pass
+        return False
     except Exception as e:
-        logger.exception(e)
+        logger.exception(f"Failed to check subscription in {channel_id}: {e}")
+        return False
     else:
-        if user.status != enums.ChatMemberStatus.BANNED:
+        return user.status != enums.ChatMemberStatus.BANNED:
             return True
 
     return False
