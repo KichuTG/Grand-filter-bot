@@ -51,7 +51,7 @@ async def is_subscribed(bot, query, channel_id):
         logger.exception(f"Failed to check subscription in {channel_id}: {e}")
         return False
     else:
-        return user.status != enums.ChatMemberStatus.BANNED:
+        return user.status != enums.ChatMemberStatus.BANNED
             return True
 
     return False
