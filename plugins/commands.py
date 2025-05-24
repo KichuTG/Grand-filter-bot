@@ -22,27 +22,69 @@ BATCH_FILES = {}
 async def start(client, message):
     if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         buttons = [[
-                    InlineKeyboardButton('➕ 𝖠𝖽𝖽 𝖬𝖾 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖦𝗋𝗈𝗎𝗉 ➕', url=f"http://t.me/{temp.U_NAME}?startgroup=true")
-                ],[
-                    InlineKeyboardButton('🔎 𝖲𝖾𝖺𝗋𝖼𝗁  𝖧𝖾𝗋𝖾 🗂', switch_inline_query_current_chat='')
-                ]]
+            InlineKeyboardButton('➕ 𝖠𝖽𝖽 𝖬𝖾 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖦𝗋𝗈𝗎𝗉 ➕', url=f"http://t.me/{temp.U_NAME}?startgroup=true")
+        ],[
+            InlineKeyboardButton('🔎 𝖲𝖾𝖺𝗋𝖼𝗁  𝖧𝖾𝗋𝖾 🗂', switch_inline_query_current_chat='')
+        ]]
         reply_markup = InlineKeyboardMarkup(buttons)
         await message.reply(script.START_TXT.format(message.from_user.mention if message.from_user else message.chat.title, temp.U_NAME, temp.B_NAME), reply_markup=reply_markup)
         await asyncio.sleep(2)
         if not await db.get_chat(message.chat.id):
-            total=await client.get_chat_members_count(message.chat.id)
-            await client.send_message(LOG_CHANNEL, script.LOG_TEXT_G.format(message.chat.title, message.chat.id, total, "Unknown"))       
+            total = await client.get_chat_members_count(message.chat.id)
+            await client.send_message(LOG_CHANNEL, script.LOG_TEXT_G.format(message.chat.title, message.chat.id, total, "Unknown"))
             await db.add_chat(message.chat.id, message.chat.title)
-        return 
+        return
+
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT_P.format(message.from_user.id, message.from_user.mention))
+
+    # START: move AUTH_CHANNELS logic here
+    if AUTH_CHANNELS:
+        not_subscribed = []
+        invite_buttons = []
+
+        for ch in AUTH_CHANNELS:
+            try:
+                if not await is_subscribed(client, message, int(ch)):
+                    try:
+                        invite_link = await client.create_chat_invite_link(int(ch))
+                    except ChatAdminRequired:
+                        logger.error(f"Bot must be admin in channel: {ch}")
+                        continue
+                    invite_buttons.append([
+                        InlineKeyboardButton("🤖 Join Updates Channel 🤖", url=invite_link.invite_link)
+                    ])
+                    not_subscribed.append(ch)
+            except Exception as e:
+                logger.error(f"Subscription check failed for channel {ch}: {e}")
+
+        if not_subscribed:
+            btn = invite_buttons.copy()
+
+            if len(message.command) > 1 and message.command[1] not in ["subscribe", "send_all"]:
+                try:
+                    kk, file_id = message.command[1].split("_", 1)
+                    pre = 'checksubp' if kk == 'filep' else 'checksub' 
+                    btn.append([InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"{pre}#{file_id}")])
+                except (IndexError, ValueError):
+                    btn.append([InlineKeyboardButton("⟳ Try Again ⟳", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
+
+            await client.send_message(
+                chat_id=message.from_user.id,
+                text="**Please join all the required channels to use this bot!**",
+                reply_markup=InlineKeyboardMarkup(btn),
+                parse_mode=enums.ParseMode.MARKDOWN
+            )
+            return
+    # END: AUTH_CHANNELS logic
+
     if len(message.command) != 2:
         buttons = [[
-                    InlineKeyboardButton('➕ 𝖠𝖽𝖽 𝖬𝖾 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖦𝗋𝗈𝗎𝗉 ➕', url=f"http://t.me/{temp.U_NAME}?startgroup=true")
-                ],[
-                    InlineKeyboardButton('🔎 𝖲𝖾𝖺𝗋𝖼𝗁  𝖧𝖾𝗋𝖾 🗂', switch_inline_query_current_chat='')
-                ]]
+            InlineKeyboardButton('➕ 𝖠𝖽𝖽 𝖬𝖾 𝖳𝗈 𝖸𝗈𝗎𝗋 𝖦𝗋𝗈𝗎𝗉 ➕', url=f"http://t.me/{temp.U_NAME}?startgroup=true")
+        ],[
+            InlineKeyboardButton('🔎 𝖲𝖾𝖺𝗋𝖼𝗁  𝖧𝖾𝗋𝖾 🗂', switch_inline_query_current_chat='')
+        ]]
         reply_markup = InlineKeyboardMarkup(buttons)
         await message.reply_photo(
             photo=random.choice(PICS),
@@ -51,44 +93,8 @@ async def start(client, message):
             parse_mode=enums.ParseMode.HTML
         )
         return
-    
-if AUTH_CHANNELS:
-    not_subscribed = []
-    invite_buttons = []
 
-    for ch in AUTH_CHANNELS:
-        try:
-            if not await is_subscribed(client, message, int(ch)):
-                try:
-                    invite_link = await client.create_chat_invite_link(int(ch))
-                except ChatAdminRequired:
-                    logger.error(f"Bot must be admin in channel: {ch}")
-                    continue
-                invite_buttons.append([
-                    InlineKeyboardButton("🤖 Join Updates Channel 🤖", url=invite_link.invite_link)
-                ])
-                not_subscribed.append(ch)
-        except Exception as e:
-            logger.error(f"Subscription check failed for channel {ch}: {e}")
-
-    if not_subscribed:
-        btn = invite_buttons.copy()
-
-        if len(message.command) > 1 and message.command[1] not in ["subscribe", "send_all"]:
-            try:
-                kk, file_id = message.command[1].split("_", 1)
-                pre = 'checksubp' if kk == 'filep' else 'checksub' 
-                btn.append([InlineKeyboardButton("⟳ Try Again ⟳", callback_data=f"{pre}#{file_id}")])
-            except (IndexError, ValueError):
-                btn.append([InlineKeyboardButton("⟳ Try Again ⟳", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
-        
-        await client.send_message(
-            chat_id=message.from_user.id,
-            text="**Please join all the required channels to use this bot!**",
-            reply_markup=InlineKeyboardMarkup(btn),
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
-        return
+    # Continue logic here for /start with parameter
         
     if len(message.command) == 2 and message.command[1] in ["subscribe", "error", "okay", "help"]:
         buttons = [[
